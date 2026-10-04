@@ -1,0 +1,487 @@
+---
+title: "Group project cluster analysis"
+author: "Daphney Loka"
+date: "2026-04-11"
+output: html_document
+---
+
+# Read datasets from csv files 
+
+```{r}
+
+# load datasets from csv files into R
+if (!"readxl" %in% installed.packages()) install.packages("readxl")
+library(readxl)
+
+# import data
+dta.pda <- read_excel("Loyalty Program Data_clean.xlsx", sheet = "clean1")
+
+```
+
+# Select variables & standardize
+
+```{r}
+# list the names of the variables in the dataset
+names(dta.pda)
+
+head(dta.pda)
+```
+
+```{r}
+# choose only the BASE variables for the cluster analyses.
+
+# standardize the data using function scale().
+# it is important to standardize the data because the scale 
+# of different variables may vary a lot. The variables with 
+# larger scales will have more impact in the distance measure
+dta.pda.clust <- scale(dta.pda[,2:9])
+
+```
+
+
+# Calculate distance matrix
+
+```{r}
+# calculate distance matrix using the standardized data
+# the result is an upper triangular matrix with 9045 items (135*134/2)
+dist.pda <- dist(dta.pda.clust, method = "euclidean") 
+
+# show a small part of the matrix (distances among the first 6 cases)
+as.matrix(dist.pda)[1:6,1:6]
+## person 1 with person 2 -6
+## person 2 with person 1, 3-6
+```
+
+
+# Figure out N of clusters
+
+```{r tidy=TRUE}
+# load the packages needed 
+if (!"NbClust" %in% installed.packages()) install.packages("NbClust")
+library(NbClust)
+```
+
+Software suggestion of N of clusters
+
+```{r tidy=FALSE, fig.width=7, fig.height=5}
+
+# run different indices, each proposes its optimal N of clusters
+res.nbclust <- NbClust(
+  data = dta.pda.clust, min.nc = 2, max.nc = 10, 
+  method = "complete", index ="all"
+)
+
+```
+
+```{r}
+# summarize voting of best n of clusters
+best_nc <- as.data.frame(t(res.nbclust$Best.nc), stringsAsFactors = TRUE)
+best_nc$Number_clusters <- as.factor(best_nc$Number_clusters)
+	
+# drop invalid indices where Value_Index is NA, or N_Cluster is 0
+best_nc_valid <- best_nc[!is.na(best_nc$Value_Index) & best_nc$Number_clusters != 0, ]
+best_nc_valid$Number_clusters <- droplevels(best_nc_valid$Number_clusters)
+best_nc_sum <- summary(best_nc_valid$Number_clusters)
+
+# show histogram
+df <- data.frame(N_Cluster = names(best_nc_sum), freq = best_nc_sum, stringsAsFactors = TRUE)
+barplot(height = df$freq,
+        names.arg = df$N_Cluster,
+        xlab = "Number of clusters k",
+        ylab = "Frequency among all indices",
+        main = paste0("Optimal number of clusters - k = ", names(which.max(best_nc_sum))),
+        col = "steelblue",
+        border = "steelblue")
+
+```
+
+<br>
+
+# 2 Groups PAM
+
+Because of the weakness of K-means approach, we use a robust version of K-means based on medoids, Partitioning Around Medoids (PAM). The command is "pam()" instead of "kmeans()".
+
+```{r tidy=TRUE}
+# load the packages needed
+if (!"cluster" %in% installed.packages()) install.packages("cluster")
+library(cluster)
+```
+
+```{r tidy=TRUE}
+# Conduct PAM cluster analysis
+fgp.G2 <- pam(dist.pda, 2)
+
+# Results: cluster membership
+fgp.G2$clustering
+```
+
+```{r eval=FALSE}
+# EXPORT results to csv file
+write.csv(fgp.G2$clustering, "FGP_G2.csv")
+```
+
+<br>
+
+# 7 Groups PAM
+
+```{r tidy=TRUE}
+# Conduct PAM cluster analysis
+FGP.G7 <- pam(dist.pda, 7)
+
+# Results: cluster membership
+FGP.G7$clustering
+```
+
+```{r eval=FALSE}
+# Export results to csv file
+write.csv(FGP.G7$clustering, "FGP_G7.csv")
+```
+
+<br><br>
+
+############ 
+Clean 2 with purchase count for each merchant + SalesAmt instead of PointReward
+
+
+```{r}
+# import data
+dta.fgp <- read_excel("Loyalty Program Data_clean.xlsx", sheet = "clean2")
+```
+
+
+# Select variables & standardize
+
+```{r}
+# list the names of the variables in the dataset
+names(dta.fgp)
+
+head(dta.fgp)
+```
+
+```{r}
+# choose only the BASE variables for the cluster analyses.
+
+# standardize the data using function scale().
+# it is important to standardize the data because the scale 
+# of different variables may vary a lot. The variables with 
+# larger scales will have more impact in the distance measure
+dta.fgp.clust <- scale(dta.fgp[,2:12])
+
+```
+
+
+# Calculate distance matrix
+
+```{r}
+# calculate distance matrix using the standardized data
+# the result is an upper triangular matrix with 9045 items (135*134/2)
+dist.fgp <- dist(dta.fgp.clust, method = "euclidean") 
+
+# show a small part of the matrix (distances among the first 6 cases)
+as.matrix(dist.fgp)[1:6,1:6]
+## person 1 with person 2 -6
+## person 2 with person 1, 3-6
+```
+
+
+# Figure out N of clusters
+
+```{r tidy=TRUE}
+# load the packages needed 
+if (!"NbClust" %in% installed.packages()) install.packages("NbClust")
+library(NbClust)
+```
+
+Software suggestion of N of clusters
+
+```{r tidy=FALSE, fig.width=7, fig.height=5}
+
+# run different indices, each proposes its optimal N of clusters
+res.nbclust2 <- NbClust(
+  data = dta.fgp.clust, min.nc = 2, max.nc = 10, 
+  method = "complete", index ="all"
+)
+
+```
+
+```{r}
+# summarize voting of best n of clusters
+best_nc2 <- as.data.frame(t(res.nbclust2$Best.nc), stringsAsFactors = TRUE)
+best_nc2$Number_clusters <- as.factor(best_nc2$Number_clusters)
+	
+# drop invalid indices where Value_Index is NA, or N_Cluster is 0
+best_nc_valid2 <- best_nc2[!is.na(best_nc2$Value_Index) & best_nc2$Number_clusters != 0, ]
+best_nc_valid2$Number_clusters <- droplevels(best_nc_valid2$Number_clusters)
+best_nc_sum2 <- summary(best_nc_valid2$Number_clusters)
+
+# show histogram
+df2 <- data.frame(N_Cluster2 = names(best_nc_sum2), freq2 = best_nc_sum2, stringsAsFactors = TRUE)
+barplot(height = df2$freq,
+        names.arg = df2$N_Cluster2,
+        xlab = "Number of clusters k",
+        ylab = "Frequency among all indices",
+        main = paste0("Optimal number of clusters - k = ", names(which.max(best_nc_sum2))),
+        col = "steelblue",
+        border = "steelblue")
+
+```
+
+<br>
+
+# 2 Groups PAM
+
+Because of the weakness of K-means approach, we use a robust version of K-means based on medoids, Partitioning Around Medoids (PAM). The command is "pam()" instead of "kmeans()".
+
+```{r tidy=TRUE}
+# load the packages needed
+if (!"cluster" %in% installed.packages()) install.packages("cluster")
+library(cluster)
+```
+
+```{r tidy=TRUE}
+# Conduct PAM cluster analysis
+fgp.G2.1 <- pam(dist.fgp, 2)
+
+# Results: cluster membership
+fgp.G2.1$clustering
+```
+
+```{r eval=FALSE}
+# EXPORT results to csv file
+write.csv(fgp.G2.1$clustering, "FGP_G2_1.csv")
+```
+
+<br>
+
+
+############ 
+Clean 3 with everything
+
+
+```{r}
+# import data
+dta.fgp1 <- read_excel("Loyalty Program Data_clean.xlsx", sheet = "clean3")
+```
+
+
+# Select variables & standardize
+
+```{r}
+# list the names of the variables in the dataset
+names(dta.fgp1)
+
+head(dta.fgp1)
+```
+
+```{r}
+# choose only the BASE variables for the cluster analyses.
+
+# standardize the data using function scale().
+# it is important to standardize the data because the scale 
+# of different variables may vary a lot. The variables with 
+# larger scales will have more impact in the distance measure
+dta.fgp.clust1 <- scale(dta.fgp1[,2:15])
+
+```
+
+
+# Calculate distance matrix
+
+```{r}
+# calculate distance matrix using the standardized data
+# the result is an upper triangular matrix with 9045 items (135*134/2)
+dist.fgp1 <- dist(dta.fgp.clust1, method = "euclidean") 
+
+# show a small part of the matrix (distances among the first 6 cases)
+as.matrix(dist.fgp1)[1:6,1:6]
+## person 1 with person 2 -6
+## person 2 with person 1, 3-6
+```
+
+
+# Figure out N of clusters
+
+```{r tidy=TRUE}
+# load the packages needed 
+if (!"NbClust" %in% installed.packages()) install.packages("NbClust")
+library(NbClust)
+```
+
+Software suggestion of N of clusters
+
+```{r tidy=FALSE, fig.width=7, fig.height=5}
+
+# run different indices, each proposes its optimal N of clusters
+res.nbclust3 <- NbClust(
+  data = dta.fgp.clust1, min.nc = 2, max.nc = 10, 
+  method = "complete", index ="all"
+)
+
+```
+
+```{r}
+# summarize voting of best n of clusters
+best_nc3 <- as.data.frame(t(res.nbclust3$Best.nc), stringsAsFactors = TRUE)
+best_nc3$Number_clusters <- as.factor(best_nc3$Number_clusters)
+	
+# drop invalid indices where Value_Index is NA, or N_Cluster is 0
+best_nc_valid3 <- best_nc3[!is.na(best_nc3$Value_Index) & best_nc3$Number_clusters != 0, ]
+best_nc_valid3$Number_clusters <- droplevels(best_nc_valid3$Number_clusters)
+best_nc_sum3 <- summary(best_nc_valid3$Number_clusters)
+
+# show histogram
+df3 <- data.frame(N_Cluster3 = names(best_nc_sum3), freq3 = best_nc_sum3, stringsAsFactors = TRUE)
+barplot(height = df3$freq,
+        names.arg = df3$N_Cluster3,
+        xlab = "Number of clusters k",
+        ylab = "Frequency among all indices",
+        main = paste0("Optimal number of clusters - k = ", names(which.max(best_nc_sum3))),
+        col = "steelblue",
+        border = "steelblue")
+
+```
+
+<br>
+
+# 3 Groups PAM
+
+Because of the weakness of K-means approach, we use a robust version of K-means based on medoids, Partitioning Around Medoids (PAM). The command is "pam()" instead of "kmeans()".
+
+```{r tidy=TRUE}
+# load the packages needed
+if (!"cluster" %in% installed.packages()) install.packages("cluster")
+library(cluster)
+```
+
+```{r tidy=TRUE}
+# Conduct PAM cluster analysis
+fgp.G3 <- pam(dist.fgp1, 3)
+
+# Results: cluster membership
+fgp.G3$clustering
+```
+
+```{r eval=FALSE}
+# EXPORT results to csv file
+write.csv(fgp.G3$clustering, "FGP_G3.csv")
+```
+
+<br>
+
+
+
+############ 
+Clean 4 with everything (and edited age)
+
+
+```{r}
+# import data
+dta.fgp1 <- read_excel("Loyalty Program Data_clean.xlsx", sheet = "clean4")
+```
+
+
+# Select variables & standardize
+
+```{r}
+# list the names of the variables in the dataset
+names(dta.fgp1)
+
+head(dta.fgp1)
+```
+
+```{r}
+# choose only the BASE variables for the cluster analyses.
+
+# standardize the data using function scale().
+# it is important to standardize the data because the scale 
+# of different variables may vary a lot. The variables with 
+# larger scales will have more impact in the distance measure
+dta.fgp.clust1 <- scale(dta.fgp1[,2:15])
+
+```
+
+
+# Calculate distance matrix
+
+```{r}
+# calculate distance matrix using the standardized data
+# the result is an upper triangular matrix with 9045 items (135*134/2)
+dist.fgp1 <- dist(dta.fgp.clust1, method = "euclidean") 
+
+# show a small part of the matrix (distances among the first 6 cases)
+as.matrix(dist.fgp1)[1:6,1:6]
+## person 1 with person 2 -6
+## person 2 with person 1, 3-6
+```
+
+
+# Figure out N of clusters
+
+```{r tidy=TRUE}
+# load the packages needed 
+if (!"NbClust" %in% installed.packages()) install.packages("NbClust")
+library(NbClust)
+```
+
+Software suggestion of N of clusters
+
+```{r tidy=FALSE, fig.width=7, fig.height=5}
+
+# run different indices, each proposes its optimal N of clusters
+res.nbclust3 <- NbClust(
+  data = dta.fgp.clust1, min.nc = 2, max.nc = 10, 
+  method = "complete", index ="all"
+)
+
+```
+
+```{r}
+# summarize voting of best n of clusters
+best_nc3 <- as.data.frame(t(res.nbclust3$Best.nc), stringsAsFactors = TRUE)
+best_nc3$Number_clusters <- as.factor(best_nc3$Number_clusters)
+	
+# drop invalid indices where Value_Index is NA, or N_Cluster is 0
+best_nc_valid3 <- best_nc3[!is.na(best_nc3$Value_Index) & best_nc3$Number_clusters != 0, ]
+best_nc_valid3$Number_clusters <- droplevels(best_nc_valid3$Number_clusters)
+best_nc_sum3 <- summary(best_nc_valid3$Number_clusters)
+
+# show histogram
+df3 <- data.frame(N_Cluster3 = names(best_nc_sum3), freq3 = best_nc_sum3, stringsAsFactors = TRUE)
+barplot(height = df3$freq,
+        names.arg = df3$N_Cluster3,
+        xlab = "Number of clusters k",
+        ylab = "Frequency among all indices",
+        main = paste0("Optimal number of clusters - k = ", names(which.max(best_nc_sum3))),
+        col = "steelblue",
+        border = "steelblue")
+
+```
+
+<br>
+
+# 3 Groups PAM
+
+Because of the weakness of K-means approach, we use a robust version of K-means based on medoids, Partitioning Around Medoids (PAM). The command is "pam()" instead of "kmeans()".
+
+```{r tidy=TRUE}
+# load the packages needed
+if (!"cluster" %in% installed.packages()) install.packages("cluster")
+library(cluster)
+```
+
+```{r tidy=TRUE}
+# Conduct PAM cluster analysis
+fgp.G3 <- pam(dist.fgp1, 3)
+
+# Results: cluster membership
+fgp.G3$clustering
+```
+
+```{r eval=FALSE}
+# EXPORT results to csv file
+write.csv(fgp.G3$clustering, "FGP_G3_1.csv")
+```
+
+<br>
+
+
